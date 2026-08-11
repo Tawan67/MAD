@@ -101,7 +101,7 @@ int main(void)
 
   while (1)
   {
-	  HAL_UART_Transmit(&huart3, (uint8_t *)".",1, 100);
+	  HAL_UART_Transmit(&huart3, (uint8_t *)".1", 2, 100);
 	  HAL_Delay(400);
     /* USER CODE END WHILE */
 
@@ -159,7 +159,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     if (GPIO_Pin == GPIO_PIN_13)
     {
         // ถ้ากดห่างจากครั้งก่อนน้อยกว่า 300ms → ข้ามไป
-        if (HAL_GetTick() - last_tick < 500) return;
+        if (HAL_GetTick() - last_tick < 300) return;
         last_tick = HAL_GetTick();
 
         HAL_UART_Transmit(&huart3, (uint8_t*)"---", 3, 100);
@@ -174,9 +174,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
     if(GPIO_Pin == GPIO_PIN_0)
     {
-    	if (HAL_GetTick() - last_tick < 500) return;
-    	last_tick = HAL_GetTick();
-
     	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
         HAL_UART_Transmit(&huart3, (uint8_t*)"---", 3, 100);
         HAL_Delay(200);
