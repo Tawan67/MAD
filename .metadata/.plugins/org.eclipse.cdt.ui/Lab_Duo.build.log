@@ -1,0 +1,10 @@
+12:57:32 **** Incremental Build of configuration Debug for project Lab_Duo ****
+make -j16 all 
+arm-none-eabi-size  Lab_Duo.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19288	     92	   2508	  21888	   5580	Lab_Duo.elf
+Finished building: default.size.stdout
+ 
+
+12:57:32 Build Finished. 0 errors, 0 warnings. (took 340ms)
+
