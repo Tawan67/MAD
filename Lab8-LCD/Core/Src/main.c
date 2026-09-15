@@ -67,22 +67,8 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 4 */
 //uint16_t CRC16_2(uint8_t*, uint8_t);
 /* USER CODE BEGIN 4 */
-uint16_t CRC16_2(uint8_t *ptr, uint8_t length)
-{
-    uint16_t crc = 0xFFFF;
-    uint8_t  s   = 0x00;
+uint16_t CRC16_2(uint8_t *ptr, uint8_t length);
 
-    while(length--) {
-        crc ^= *ptr++;
-        for(s = 0; s < 8; s++) {
-            if((crc & 0x01) != 0) {
-                crc >>= 1;
-                crc ^= 0xA001;
-            } else crc >>= 1;
-        }
-    }
-    return crc;
-}
 /* USER CODE END 4 */
 
 
@@ -97,14 +83,28 @@ uint8_t cmdBuffer[3];
 uint8_t cmdBuffer[3] = {0x03, 0x00, 0x04};
 char str[50];
 uint8_t dataBuffer[8];
-
+char ctemper[10];
+char chumid[10];
  // คำสั่งอ่าน, รีจิสเตอร์เริ่มต้น, จำนวนไบต์
 uint8_t rxBuffer[8];
 float temperature = 0.0;
 float humidity = 0.0;
 int flag = 0,flag2 = 0;
-// ฟังก์ชันสำหรับอ่านค่า
+uint8_t red_bar = 0,green_bar = 0,blue_bar = 0;
 
+// ฟังก์ชันสำหรับอ่านค่า
+uint8_t r=0,g=0,b=0;
+uint16_t RGB565_CONVERT(uint8_t R, uint8_t G, uint8_t B)
+{
+    // การแปลงค่า:
+    // 1. ลดทอนค่า 8-bit (0-255) ให้เหลือตามจำนวนบิตของแต่ละสี (5 หรือ 6 bit)
+    //    โดยการ shift right (R>>3, G>>2, B>>3)
+    // 2. เลื่อนบิตที่แปลงแล้วไปอยู่ในตำแหน่งที่ถูกต้องในข้อมูล 16-bit
+    //    (Red อยู่ซ้ายสุด, Green อยู่กลาง, Blue อยู่ขวาสุด)
+    // 3. นำค่ามารวมกันด้วย Bitwise OR (|)
+
+    return ((R >> 3) << 11) | ((G >> 2) << 5) | (B >> 3);
+}
 /* USER CODE END 0 */
 
 /**
@@ -204,449 +204,86 @@ int main(void)
             }
         }
     }
+
+    ILI9341_Init();
+    char rbar[10],gbar[10],bbar[10];
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	ILI9341_Fill_Screen(WHITE);
+	int Width = 121;
     while (1)
       {
-    /* USER CODE END WHILE */
+    	/* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+    	  /* USER CODE BEGIN 3 */
+    			Read_AM2320();
+    			sprintf(ctemper,"%.1f C",temperature);
+    			sprintf(chumid,"%.1f %%RH",humidity);
+    			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+    			ILI9341_Draw_Text(ctemper, 20, 20, BLACK, 2, WHITE);
+    			ILI9341_Draw_Text(chumid, 170, 20, BLACK, 2, WHITE);
 
-    //----------------------------------------------------------PERFORMANCE TEST
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("FPS TEST, 40 loop 2 screens", 10, 10, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
+    			ILI9341_Draw_Filled_Circle(130, 30, 25, RGB565_CONVERT(r*25,g*25,b*25));
 
-    		uint32_t Timer_Counter = 0;
-    		for(uint32_t j = 0; j < 2; j++)
-    		{
-    			HAL_TIM_Base_Start(&htim1);
-    			for(uint16_t i = 0; i < 10; i++)
-    			{
-    				ILI9341_Fill_Screen(WHITE);
-    				ILI9341_Fill_Screen(BLACK);
-    			}
+    			ILI9341_Draw_Filled_Circle(30, 81, 20, RED);
+    			ILI9341_Draw_Filled_Circle(30, 141, 20, GREEN);
+    			ILI9341_Draw_Filled_Circle(30, 201, 20, BLUE);
 
-    			//20.000 per second!
-    			HAL_TIM_Base_Stop(&htim1);
-    			Timer_Counter += __HAL_TIM_GET_COUNTER(&htim1);
-    			__HAL_TIM_SET_COUNTER(&htim1, 0);
-    		}
-    		Timer_Counter /= 2;
+    			ILI9341_Draw_Rectangle(60, 60, Width, 35, RGB565_CONVERT(255, 200, 200));
+    			ILI9341_Draw_Rectangle(60, 120, Width, 35, RGB565_CONVERT(200, 255, 200));
+    			ILI9341_Draw_Rectangle(60, 180, Width, 35, RGB565_CONVERT(200, 200, 255));
 
-    		char counter_buff[30];
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		sprintf(counter_buff, "Timer counter value: %d", Timer_Counter*2);
-    		ILI9341_Draw_Text(counter_buff, 10, 10, BLACK, 1, WHITE);
+    			ILI9341_Draw_Rectangle(60, 60, (r%11)*12, 35, RED);
+    			ILI9341_Draw_Rectangle(60, 120, (g%11)*12, 35, GREEN);
+    			ILI9341_Draw_Rectangle(60, 180, (b%11)*12, 35, BLUE);
 
-    		double seconds_passed = 2*((float)Timer_Counter / 20000);
-    		sprintf(counter_buff, "Time: %.3f Sec", seconds_passed);
-    		ILI9341_Draw_Text(counter_buff, 10, 30, BLACK, 2, WHITE);
+    			sprintf(rbar,"%d%%",(r%11)*10);
+    			ILI9341_Draw_Text(rbar, 190, 70, BLACK, 3, WHITE);
 
-    		double timer_float = 20/(((float)Timer_Counter)/20000);	//Frames per sec
+    			sprintf(gbar,"%d%%",(g%11)*10);
+    			ILI9341_Draw_Text(gbar, 190, 130, BLACK, 3, WHITE);
 
-    		sprintf(counter_buff, "FPS:  %.2f", timer_float);
-    		ILI9341_Draw_Text(counter_buff, 10, 50, BLACK, 2, WHITE);
-    		double MB_PS = timer_float*240*320*2/1000000;
-    		sprintf(counter_buff, "MB/S: %.2f", MB_PS);
-    		ILI9341_Draw_Text(counter_buff, 10, 70, BLACK, 2, WHITE);
-    		double SPI_utilized_percentage = (MB_PS/(6.25 ))*100;		//50mbits / 8 bits
-    		sprintf(counter_buff, "SPI Utilized: %.2f", SPI_utilized_percentage);
-    		ILI9341_Draw_Text(counter_buff, 10, 90, BLACK, 2, WHITE);
-    		HAL_Delay(10000);
-
-
-    		static uint16_t x = 0;
-    		static uint16_t y = 0;
-
-    		char Temp_Buffer_text[40];
-
-    //----------------------------------------------------------COUNTING MULTIPLE SEGMENTS
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Counting multiple segments at once", 10, 10, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-
-    		for(uint16_t i = 0; i <= 10; i++)
-    		{
-    		sprintf(Temp_Buffer_text, "Counting: %d", i);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 10, BLACK, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 30, BLUE, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 50, RED, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 70, GREEN, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 90, BLACK, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 110, BLUE, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 130, RED, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 150, GREEN, 2, WHITE);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 170, WHITE, 2, BLACK);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 190, BLUE, 2, BLACK);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 210, RED, 2, BLACK);
-    		}
-
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------COUNTING SINGLE SEGMENT
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Counting single segment", 10, 10, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		for(uint16_t i = 0; i <= 100; i++)
-    		{
-    		sprintf(Temp_Buffer_text, "Counting: %d", i);
-    		ILI9341_Draw_Text(Temp_Buffer_text, 10, 10, BLACK, 3, WHITE);
-    		}
-
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------ALIGNMENT TEST
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Rectangle alignment check", 10, 10, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		ILI9341_Draw_Hollow_Rectangle_Coord(50, 50, 100, 100, BLACK);
-    		ILI9341_Draw_Filled_Rectangle_Coord(20, 20, 50, 50, BLACK);
-    		ILI9341_Draw_Hollow_Rectangle_Coord(10, 10, 19, 19, BLACK);
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------LINES EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Randomly placed and sized", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Horizontal and Vertical lines", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		for(uint32_t i = 0; i < 30000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			uint16_t radiusr = 0;
-    			uint16_t colourr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			radiusr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			colourr = random_num;
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			radiusr &= 0x001F;
-    			//ili9341_drawpixel(xr, yr, WHITE);
-    			ILI9341_Draw_Horizontal_Line(xr, yr, radiusr, colourr);
-    			ILI9341_Draw_Vertical_Line(xr, yr, radiusr, colourr);
-    		}
-
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------HOLLOW CIRCLES EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Randomly placed and sized", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Circles", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-
-    		for(uint32_t i = 0; i < 3000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			uint16_t radiusr = 0;
-    			uint16_t colourr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			radiusr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			colourr = random_num;
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			radiusr &= 0x001F;
-    			//ili9341_drawpixel(xr, yr, WHITE);
-    			ILI9341_Draw_Hollow_Circle(xr, yr, radiusr*2, colourr);
-    		}
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------FILLED CIRCLES EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Randomly placed and sized", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Filled Circles", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		for(uint32_t i = 0; i < 1000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			uint16_t radiusr = 0;
-    			uint16_t colourr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			radiusr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			colourr = random_num;
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			radiusr &= 0x001F;
-    			//ili9341_drawpixel(xr, yr, WHITE);
-    			ILI9341_Draw_Filled_Circle(xr, yr, radiusr/2, colourr);
-    		}
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------HOLLOW RECTANGLES EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Randomly placed and sized", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Rectangles", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		for(uint32_t i = 0; i < 20000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			uint16_t radiusr = 0;
-    			uint16_t colourr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			radiusr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			colourr = random_num;
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			radiusr &= 0x001F;
-    			//ili9341_drawpixel(xr, yr, WHITE);
-    			ILI9341_Draw_Hollow_Rectangle_Coord(xr, yr, xr+radiusr, yr+radiusr, colourr);
-    		}
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------FILLED RECTANGLES EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Randomly placed and sized", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Filled Rectangles", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-    		for(uint32_t i = 0; i < 20000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			uint16_t radiusr = 0;
-    			uint16_t colourr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			radiusr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			colourr = random_num;
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			radiusr &= 0x001F;
-    			//ili9341_drawpixel(xr, yr, WHITE);
-    			ILI9341_Draw_Rectangle(xr, yr, radiusr, radiusr, colourr);
-    		}
-    		HAL_Delay(1000);
-
-    //----------------------------------------------------------INDIVIDUAL PIXEL EXAMPLE
-
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Slow draw by selecting", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("and adressing pixels", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-
-    		x = 0;
-    		y = 0;
-    		while (y < 240)
-    		{
-    		while ((x < 320) && (y < 240))
-    		{
-
-    			if(x % 2)
-    			{
-    				ILI9341_Draw_Pixel(x, y, BLACK);
-    			}
-
-    			x++;
-    		}
-
-    			y++;
-    			x = 0;
-    		}
-
-    		x = 0;
-    		y = 0;
-
-
-    		while (y < 240)
-    		{
-    		while ((x < 320) && (y < 240))
-    		{
-
-    			if(y % 2)
-    			{
-    				ILI9341_Draw_Pixel(x, y, BLACK);
-    			}
-
-    			x++;
-    		}
-
-    			y++;
-    			x = 0;
-    		}
-    		HAL_Delay(2000);
-
-    //----------------------------------------------------------INDIVIDUAL PIXEL EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Random position and colour", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("500000 pixels", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Fill_Screen(WHITE);
-
-
-    		for(uint32_t i = 0; i < 500000; i++)
-    		{
-    			uint32_t random_num = 0;
-    			uint16_t xr = 0;
-    			uint16_t yr = 0;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			xr = random_num;
-    			random_num = HAL_RNG_GetRandomNumber(&hrng);
-    			yr = random_num;
-    			uint16_t color = HAL_RNG_GetRandomNumber(&hrng);
-
-    			xr &= 0x01FF;
-    			yr &= 0x01FF;
-    			ILI9341_Draw_Pixel(xr, yr, color);
-    		}
-    		HAL_Delay(2000);
-
-    //----------------------------------------------------------565 COLOUR EXAMPLE, Grayscale
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Colour gradient", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("Grayscale", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-
-
-    		for(uint16_t i = 0; i <= (320); i++)
-    		{
-    			uint16_t Red = 0;
-    			uint16_t Green = 0;
-    			uint16_t Blue = 0;
-
-    			Red = i/(10);
-    			Red <<= 11;
-    			Green = i/(5);
-    			Green <<= 5;
-    			Blue = i/(10);
-
-
-
-    			uint16_t RGB_color = Red + Green + Blue;
-    			ILI9341_Draw_Rectangle(i, x, 1, 240, RGB_color);
-
-    		}
-    		HAL_Delay(2000);
-
-    //----------------------------------------------------------IMAGE EXAMPLE, Snow Tiger
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("RGB Picture", 10, 10, BLACK, 1, WHITE);
-    		ILI9341_Draw_Text("TIGER", 10, 20, BLACK, 1, WHITE);
-    		HAL_Delay(2000);
-    		ILI9341_Draw_Image((const char*)snow_tiger, SCREEN_VERTICAL_2);
-    		ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
-    		HAL_Delay(10000);
-
-
-    //----------------------------------------------------------TOUCHSCREEN EXAMPLE
-    		ILI9341_Fill_Screen(WHITE);
-    		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    		ILI9341_Draw_Text("Touchscreen", 10, 10, BLACK, 2, WHITE);
-    		ILI9341_Draw_Text("Touch to draw", 10, 30, BLACK, 2, WHITE);
-    		ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
-
-    		while(1)
-    		{
+    			sprintf(bbar,"%d%%",(b%11)*10);
+    			ILI9341_Draw_Text(bbar, 190, 190, BLACK, 3, WHITE);
 
     			if(TP_Touchpad_Pressed())
-            {
+    			        {
+    			            uint16_t pos[2];
 
-    					uint16_t x_pos = 0;
-    					uint16_t y_pos = 0;
+    			            // 2. อ่านพิกัดที่กด
+    			            if(TP_Read_Coordinates(pos) == TOUCHPAD_DATA_OK)
+    			            {
+    			                uint16_t x = pos[0];
+    			                uint16_t y = 319-pos[1];
+//    			                char coor[10];
+//    			                sprintf(coor,"x = %d,y=%d",x,y);
+//    			                ILI9341_Draw_Text(coor,y, x, BLACK,1,WHITE);
+    			                // เอา X, Y ไปใช้แสดงหรือวาดของได้
+    			                // เช่น วาดจุดตามนิ้ว
+    			                if(y>10 && y< 50&& x>61 && x<101){
+    			                	r++;
+    			                	r%=11;
 
+    			                }
+    			                if(y>10 && y< 50&& x>121 && x<161){
+    			                	g++;
+									g%=11;
+    			                    			                }
+    			                if(y>10 && y< 50&& x>181 && x<221){
+									b++;
+									b%=11;
+    			                    			                }
+    			            	ILI9341_Fill_Screen(WHITE);
 
-    					HAL_GPIO_WritePin(GPIOB, LD3_Pin|LD2_Pin, GPIO_PIN_SET);
+    			            }
+    			        }
+    	  }
+    	  /* USER CODE END 3 */
 
-              uint16_t position_array[2];
-
-    					if(TP_Read_Coordinates(position_array) == TOUCHPAD_DATA_OK)
-    					{
-    					x_pos = position_array[0];
-    					y_pos = position_array[1];
-    					ILI9341_Draw_Filled_Circle(x_pos, y_pos, 2, BLACK);
-
-    					ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    					char counter_buff[30];
-    					sprintf(counter_buff, "POS X: %.3d", x_pos);
-    					ILI9341_Draw_Text(counter_buff, 10, 80, BLACK, 2, WHITE);
-    					sprintf(counter_buff, "POS Y: %.3d", y_pos);
-    					ILI9341_Draw_Text(counter_buff, 10, 120, BLACK, 2, WHITE);
-    					ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
-    					}
-
-    					//ILI9341_Draw_Pixel(x_pos, y_pos, BLACK);
-
-            }
-    			else
-    			{
-    				HAL_GPIO_WritePin(GPIOB, LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
-    			}
-
-    		}
-
-
-      }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -666,12 +303,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 12;
-  RCC_OscInitStruct.PLL.PLLN = 192;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 216;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 9;
   RCC_OscInitStruct.PLL.PLLR = 2;
@@ -696,7 +334,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_6) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
   {
     Error_Handler();
   }
@@ -705,7 +343,22 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 //uint16_t CRC16_2(uint8_t*, uint8_t);
 /* USER CODE BEGIN 4 */
+uint16_t CRC16_2(uint8_t *ptr, uint8_t length)
+{
+    uint16_t crc = 0xFFFF;
+    uint8_t  s   = 0x00;
 
+    while(length--) {
+        crc ^= *ptr++;
+        for(s = 0; s < 8; s++) {
+            if((crc & 0x01) != 0) {
+                crc >>= 1;
+                crc ^= 0xA001;
+            } else crc >>= 1;
+        }
+    }
+    return crc;
+}
 /* USER CODE END 4 */
 
 /**
