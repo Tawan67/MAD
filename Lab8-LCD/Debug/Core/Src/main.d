@@ -37,7 +37,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_Touchscreen.h \
  E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_STM32_Driver.h \
  E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_GFX.h \
- E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/snow_tiger.h
+ E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/snow_tiger.h \
+ E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/stdpic.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h:
 ../Core/Inc/stm32f7xx_hal_conf.h:
@@ -83,3 +84,4 @@ E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_Touchscreen.h:
 E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_STM32_Driver.h:
 E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/ILI9341_GFX.h:
 E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/snow_tiger.h:
+E:/3rd_Year/MAD/Lab/Lab8-LCD/Core/Src/ILI9341/stdpic.h:

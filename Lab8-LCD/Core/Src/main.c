@@ -35,6 +35,7 @@
 #include "ILI9341_GFX.h"
 
 #include "snow_tiger.h"
+#include "stdpic.h"
 
 /* USER CODE END Includes */
 
@@ -91,7 +92,9 @@ float temperature = 0.0;
 float humidity = 0.0;
 int flag = 0,flag2 = 0;
 uint8_t red_bar = 0,green_bar = 0,blue_bar = 0;
-
+int flagDisplay = 1;
+uint32_t now;
+uint32_t check;
 // ฟังก์ชันสำหรับอ่านค่า
 uint8_t r=0,g=0,b=0;
 uint16_t RGB565_CONVERT(uint8_t R, uint8_t G, uint8_t B)
@@ -207,81 +210,156 @@ int main(void)
 
     ILI9341_Init();
     char rbar[10],gbar[10],bbar[10];
+    // ฟังก์ชันวาดรูปภาพแบบกำหนดพิกัดและขนาด
+    void ILI9341_Draw_Custom_Image(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Height, const char* Image_Array) {
+        // 1. ตรวจสอบไม่ให้ขนาดเกินขอบจอ
+        if((X >= 320) || (Y >= 240)) return;
+        if((X + Width - 1) >= 320) Width = 320 - X;
+        if((Y + Height - 1) >= 240) Height = 240 - Y;
 
+        // 2. ล็อกขอบเขตหน้าต่างบนหน้าจอที่จะพ่นสีลงไป
+        ILI9341_Set_Address(X, Y, X + Width - 1, Y + Height - 1);
+
+        // 3. พ่นข้อมูลสีจาก Array เข้าจอผ่าน SPI ทีละไบต์
+        uint32_t total_bytes = (uint32_t)Width * Height * 2;
+        for(uint32_t i = 0; i < total_bytes; i++) {
+            ILI9341_Write_Data((uint8_t)Image_Array[i]);
+        }
+    }
+    void clear_display(){
+        	ILI9341_Fill_Screen(WHITE);
+        }
+    void display1(){
+    					int Width = 121;
+    					Read_AM2320();
+    	    			sprintf(ctemper,"%.1f C",temperature);
+    	    			sprintf(chumid,"%.1f %%RH",humidity);
+    	    			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+    	    			ILI9341_Draw_Text(ctemper, 20, 20, BLACK, 2, WHITE);
+    	    			ILI9341_Draw_Text(chumid, 170, 20, BLACK, 2, WHITE);
+
+    	    			ILI9341_Draw_Filled_Circle(130, 30, 25, RGB565_CONVERT(r*25,g*25,b*25));
+
+    	    			ILI9341_Draw_Filled_Circle(30, 81, 20, RED);
+    	    			ILI9341_Draw_Filled_Circle(30, 141, 20, GREEN);
+    	    			ILI9341_Draw_Filled_Circle(30, 201, 20, BLUE);
+
+    	    			ILI9341_Draw_Rectangle(60, 60, Width, 35, RGB565_CONVERT(255, 200, 200));
+    	    			ILI9341_Draw_Rectangle(60, 120, Width, 35, RGB565_CONVERT(200, 255, 200));
+    	    			ILI9341_Draw_Rectangle(60, 180, Width, 35, RGB565_CONVERT(200, 200, 255));
+
+    	    			ILI9341_Draw_Rectangle(60, 60, (r%11)*12, 35, RED);
+    	    			ILI9341_Draw_Rectangle(60, 120, (g%11)*12, 35, GREEN);
+    	    			ILI9341_Draw_Rectangle(60, 180, (b%11)*12, 35, BLUE);
+
+    	    			sprintf(rbar,"%d%%",(r%11)*10);
+    	    			ILI9341_Draw_Text(rbar, 190, 70, BLACK, 3, WHITE);
+
+    	    			sprintf(gbar,"%d%%",(g%11)*10);
+    	    			ILI9341_Draw_Text(gbar, 190, 130, BLACK, 3, WHITE);
+
+    	    			sprintf(bbar,"%d%%",(b%11)*10);
+    	    			ILI9341_Draw_Text(bbar, 190, 190, BLACK, 3, WHITE);
+
+    	    			if(TP_Touchpad_Pressed())
+    	    			        {
+    	    			            uint16_t pos[2];
+
+    	    			            // 2. อ่านพิกัดที่กด
+    	    			            if(TP_Read_Coordinates(pos) == TOUCHPAD_DATA_OK)
+    	    			            {
+    	    			                uint16_t x = pos[0];
+    	    			                uint16_t y = 319-pos[1];
+    	//    			                char coor[10];
+    	//    			                sprintf(coor,"x = %d,y=%d",x,y);
+    	//    			                ILI9341_Draw_Text(coor,y, x, BLACK,1,WHITE);
+    	    			                // เอา X, Y ไปใช้แสดงหรือวาดของได้
+    	    			                // เช่น วาดจุดตามนิ้ว
+    	    			                if(y>10 && y< 50&& x>61 && x<101){
+    	    			                	r++;
+    	    			                	r%=11;
+    	    			                	if(r==0)ILI9341_Fill_Screen(WHITE);
+
+    	    			                }
+    	    			                else if(y>10 && y< 50&& x>121 && x<161){
+    	    			                	g++;
+    										g%=11;
+    										if(g==0)ILI9341_Fill_Screen(WHITE);
+    	    			                    			                }
+    	    			                else if(y>10 && y< 50&& x>181 && x<221){
+    										b++;
+    										b%=11;
+    										if(b==0)ILI9341_Fill_Screen(WHITE);
+    	    			                    			                }
+    	    			                else if(y>105 && y< 155&& x>5 && x<55){
+    	    			                	flagDisplay  = 0;
+    	    			                	clear_display();
+    	    			                	now = HAL_GetTick();
+
+    	    			                }
+
+    	    			            }
+    	    			        }
+    }
+
+    void display2(){
+    	ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+    	ILI9341_Draw_Text("Group No.16", 130, 20, RGB565_CONVERT(r*25,g*25,b*25), 2, WHITE);
+    	ILI9341_Draw_Text("Tawan", 130, 40, RGB565_CONVERT(r*25,g*25,b*25), 2, WHITE);
+    	ILI9341_Draw_Text("Khuntha", 130, 60, RGB565_CONVERT(r*25,g*25,b*25), 2, WHITE);
+    	ILI9341_Draw_Text("67010338", 130, 80, RGB565_CONVERT(r*25,g*25,b*25), 2, WHITE);
+
+//		ILI9341_Draw_Image((const char*)stdpic, SCREEN_HORIZONTAL_2);
+		ILI9341_Draw_Custom_Image(0, 20, 120, 160, (const char*)stdpic);
+		if(TP_Touchpad_Pressed())
+								{
+									uint16_t pos[2];
+
+									// 2. อ่านพิกัดที่กด
+									if(TP_Read_Coordinates(pos) == TOUCHPAD_DATA_OK)
+									{
+										uint16_t x = pos[0];
+										uint16_t y = 319-pos[1];
+		//    			                char coor[10];
+		//    			                sprintf(coor,"x = %d,y=%d",x,y);
+		//    			                ILI9341_Draw_Text(coor,y, x, BLACK,1,WHITE);
+										// เอา X, Y ไปใช้แสดงหรือวาดของได้
+										// เช่น วาดจุดตามนิ้ว
+										if(y>10 && y< 130&& x>0 && x<160){
+											flagDisplay  = 1;
+											clear_display();
+
+										}
+
+									}
+								}
+    }
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	ILI9341_Fill_Screen(WHITE);
-	int Width = 121;
     while (1)
       {
     	/* USER CODE END WHILE */
 
     	  /* USER CODE BEGIN 3 */
-    			Read_AM2320();
-    			sprintf(ctemper,"%.1f C",temperature);
-    			sprintf(chumid,"%.1f %%RH",humidity);
-    			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-    			ILI9341_Draw_Text(ctemper, 20, 20, BLACK, 2, WHITE);
-    			ILI9341_Draw_Text(chumid, 170, 20, BLACK, 2, WHITE);
+    	if(flagDisplay == 0 && HAL_GetTick()-now >=5000){
+    		flagDisplay = 1;
+        	clear_display();
 
-    			ILI9341_Draw_Filled_Circle(130, 30, 25, RGB565_CONVERT(r*25,g*25,b*25));
+    	}
+    	if(flagDisplay==1){
+    	display1();
+    	}
+    	else if(flagDisplay ==0){
+    	display2();
+    	}
 
-    			ILI9341_Draw_Filled_Circle(30, 81, 20, RED);
-    			ILI9341_Draw_Filled_Circle(30, 141, 20, GREEN);
-    			ILI9341_Draw_Filled_Circle(30, 201, 20, BLUE);
 
-    			ILI9341_Draw_Rectangle(60, 60, Width, 35, RGB565_CONVERT(255, 200, 200));
-    			ILI9341_Draw_Rectangle(60, 120, Width, 35, RGB565_CONVERT(200, 255, 200));
-    			ILI9341_Draw_Rectangle(60, 180, Width, 35, RGB565_CONVERT(200, 200, 255));
 
-    			ILI9341_Draw_Rectangle(60, 60, (r%11)*12, 35, RED);
-    			ILI9341_Draw_Rectangle(60, 120, (g%11)*12, 35, GREEN);
-    			ILI9341_Draw_Rectangle(60, 180, (b%11)*12, 35, BLUE);
-
-    			sprintf(rbar,"%d%%",(r%11)*10);
-    			ILI9341_Draw_Text(rbar, 190, 70, BLACK, 3, WHITE);
-
-    			sprintf(gbar,"%d%%",(g%11)*10);
-    			ILI9341_Draw_Text(gbar, 190, 130, BLACK, 3, WHITE);
-
-    			sprintf(bbar,"%d%%",(b%11)*10);
-    			ILI9341_Draw_Text(bbar, 190, 190, BLACK, 3, WHITE);
-
-    			if(TP_Touchpad_Pressed())
-    			        {
-    			            uint16_t pos[2];
-
-    			            // 2. อ่านพิกัดที่กด
-    			            if(TP_Read_Coordinates(pos) == TOUCHPAD_DATA_OK)
-    			            {
-    			                uint16_t x = pos[0];
-    			                uint16_t y = 319-pos[1];
-//    			                char coor[10];
-//    			                sprintf(coor,"x = %d,y=%d",x,y);
-//    			                ILI9341_Draw_Text(coor,y, x, BLACK,1,WHITE);
-    			                // เอา X, Y ไปใช้แสดงหรือวาดของได้
-    			                // เช่น วาดจุดตามนิ้ว
-    			                if(y>10 && y< 50&& x>61 && x<101){
-    			                	r++;
-    			                	r%=11;
-
-    			                }
-    			                if(y>10 && y< 50&& x>121 && x<161){
-    			                	g++;
-									g%=11;
-    			                    			                }
-    			                if(y>10 && y< 50&& x>181 && x<221){
-									b++;
-									b%=11;
-    			                    			                }
-    			            	ILI9341_Fill_Screen(WHITE);
-
-    			            }
-    			        }
-    	  }
+      }
     	  /* USER CODE END 3 */
 
 }
