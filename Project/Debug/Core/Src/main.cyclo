@@ -1,0 +1,9 @@
+../Drivers/CMSIS/Include/core_cm7.h:2464:22:SCB_InvalidateDCache_by_Addr	2
+../Core/Src/main.c:84:6:Apply_MovingAverage	6
+../Core/Src/main.c:111:6:Draw_Oscilloscope_Waveform	1
+../Core/Src/main.c:129:5:main	3
+../Core/Src/main.c:203:6:SystemClock_Config	4
+../Core/Src/main.c:254:6:HAL_ADC_ConvHalfCpltCallback	2
+../Core/Src/main.c:267:6:HAL_ADC_ConvCpltCallback	2
+../Core/Src/main.c:282:6:MPU_Config	1
+../Core/Src/main.c:313:6:Error_Handler	1
